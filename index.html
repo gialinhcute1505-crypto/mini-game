@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minesweeper Siêu Cấp - Tăng Kịch Tính</title>
+    <title>Minesweeper Siêu Cấp - Đã Sửa Lỗi</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -132,7 +132,6 @@
             background: #eccc68;
         }
 
-        /* Màu sắc số lượng mìn xung quanh */
         .c-1 { color: #1e90ff; }
         .c-2 { color: #2ed573; }
         .c-3 { color: #ff6348; }
@@ -167,7 +166,6 @@
     </div>
 
     <script>
-        // Cấu hình chế độ chơi mặc định
         let rows = 12;
         let cols = 12;
         let baseMines = 20;
@@ -181,13 +179,22 @@
         let currentMines = baseMines;
         let flagsCount = 0;
 
-        // Khởi tạo Web Audio API giả lập âm thanh kỹ thuật số
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Khởi tạo AudioContext ở trạng thái chờ rỗng (Sẽ kích hoạt sau khi người dùng click ô)
+        let audioCtx = null;
         
-        function playSound(type) {
-            if (audioCtx.state === 'suspended') {
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+        }
+        
+        function playSound(type) {
+            // Tự động kích hoạt lại âm thanh nếu bị trình duyệt chặn ban đầu
+            initAudio();
+            if (!audioCtx) return;
 
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -229,8 +236,7 @@
                 osc.start(now);
                 osc.stop(now + 0.2);
             } else if (type === 'win') {
-                // Sửa chuỗi nốt nhạc chiến thắng vui tươi
-                const notes = [261.63, 329.63, 392.00, 523.25]; // Đồ - Mi - Sol - Đố
+                const notes = [261.63, 329.63, 392.00, 523.25];
                 notes.forEach((freq, index) => {
                     const o = audioCtx.createOscillator();
                     const g = audioCtx.createGain();
@@ -244,7 +250,6 @@
             }
         }
 
-        // Thay đổi cấp độ chơi
         function changeDifficulty() {
             const level = document.getElementById('difficulty-select').value;
             if (level === 'easy') {
@@ -257,7 +262,6 @@
             initGame();
         }
 
-        // Khởi tạo lại toàn bộ trạng thái
         function initGame() {
             gameOver = false;
             timeElapsed = 0;
@@ -274,13 +278,11 @@
             clearInterval(timerInterval);
             clearInterval(dangerInterval);
 
-            // Bắt đầu đếm thời gian
             timerInterval = setInterval(() => {
                 timeElapsed++;
                 document.getElementById('timer').textContent = timeElapsed;
             }, 1000);
 
-            // Cơ chế TĂNG ĐỘ KHÓ: Cứ mỗi 10 giây tăng độ nguy hiểm và rải thêm mìn!
             dangerInterval = setInterval(() => {
                 if(gameOver) return;
                 playSound('alert');
@@ -288,7 +290,190 @@
                 if (timeElapsed >= 30) {
                     document.getElementById('danger-level').textContent = "🚨 BÁO ĐỘNG ĐỎ";
                     document.getElementById('danger-level').style.color = "#ff4757";
-                    spawnRandomMine(); // Thả thêm mìn vào ô chưa mở
+                    spawnRandomMine();
                 } else if (timeElapsed >= 15) {
                     document.getElementById('danger-level').textContent = "⚠️ Nguy hiểm";
                     document.getElementById('danger-level').style.color = "#ff7f50";
+                    spawnRandomMine();
+                } else if (timeElapsed >= 7) {
+document.getElementById('danger-level').textContent = "⚡ Gia tăng";
+document.getElementById('danger-level').style.color = "#eccc68";
+}
+}, 10000);
+createBoard();
+}
+function createBoard() {
+const boardElement = document.getElementById('board');
+boardElement.innerHTML = '';
+boardElement.style.gridTemplateRows = repeat(${rows}, 35px);
+boardElement.style.gridTemplateColumns = repeat(${cols}, 35px);
+for (let r = 0; r < rows; r++) {
+board[r] = [];
+for (let c = 0; c < cols; c++) {
+board[r][c] = {
+row: r, col: c,
+isMine: false, isRevealed: false, isFlagged: false,
+neighborMines: 0, element: null
+};
+const cellEl = document.createElement('div');
+cellEl.classList.add('cell');
+cellEl.addEventListener('click', () => handleCellClick(r, c));
+cellEl.addEventListener('contextmenu', (e) => {
+e.preventDefault();
+handleCellRightClick(r, c);
+});
+boardElement.appendChild(cellEl);
+board[r][c].element = cellEl;
+}
+}
+let minesPlaced = 0;
+while (minesPlaced < currentMines) {
+const r = Math.floor(Math.random() * rows);
+const c = Math.floor(Math.random() * cols);
+if (!board[r][c].isMine) {
+board[r][c].isMine = true;
+minesPlaced++;
+}
+}
+calculateNeighbors();
+}
+function calculateNeighbors() {
+for (let r = 0; r < rows; r++) {
+for (let c = 0; c < cols; c++) {
+if (board[r][c].isMine) continue;
+let count = 0;
+for (let i = -1; i <= 1; i++) {
+for (let j = -1; j <= 1; j++) {
+if (board[r + i] && board[r + i][c + j] && board[r + i][c + j].isMine) {
+count++;
+}
+}
+}
+board[r][c].neighborMines = count;
+}
+}
+}
+function handleCellClick(r, c) {
+// Đảm bảo khởi tạo âm thanh khi người dùng nhấn chuột chơi game
+initAudio();
+if (gameOver || board[r][c].isRevealed || board[r][c].isFlagged) return;
+const cell = board[r][c];
+cell.isRevealed = true;
+revealedCount++;
+if (cell.isMine) {
+playSound('explode');
+cell.element.classList.add('mine');
+cell.element.innerHTML = '💣';
+endGame(false);
+return;
+}
+playSound('click');
+cell.element.classList.add('revealed');
+if (cell.neighborMines > 0) {
+cell.element.textContent = cell.neighborMines;
+cell.element.classList.add(c-${cell.neighborMines});
+} else {
+for (let i = -1; i <= 1; i++) {
+for (let j = -1; j <= 1; j++) {
+if (board[r + i] && board[r + i][c + j]) {
+handleCellClick(r + i, c + j);
+}
+}
+}
+}
+checkWinCondition();
+}
+function handleCellRightClick(r, c) {
+initAudio();
+if (gameOver || board[r][c].isRevealed) return;
+const cell = board[r][c];
+playSound('flag');
+if (!cell.isFlagged) {
+cell.isFlagged = true;
+cell.element.classList.add('flagged');
+cell.element.innerHTML = '🚩';
+flagsCount++;
+} else {
+cell.isFlagged = false;
+cell.element.classList.remove('flagged');
+cell.element.innerHTML = '';
+flagsCount--;
+}
+document.getElementById('mine-count').textContent = currentMines - flagsCount;
+}
+function spawnRandomMine() {
+let emptyCells = [];
+for (let r = 0; r < rows; r++) {
+for (let c = 0; c < cols; c++) {
+if (!board[r][c].isRevealed && !board[r][c].isMine) {
+emptyCells.push(board[r][c]);
+}
+}
+}
+if (emptyCells.length > 1) {
+const targetCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+targetCell.isMine = true;
+currentMines++;
+document.getElementById('mine-count').textContent = currentMines - flagsCount;
+calculateNeighbors();
+for (let r = 0; r < rows; r++) {
+for (let c = 0; c < cols; c++) {
+if (board[r][c].isRevealed && !board[r][c].isMine) {
+let count = 0;
+for (let i = -1; i <= 1; i++) {
+for (let j = -1; j <= 1; j++) {
+if (board[r + i] && board[r + i][c + j] && board[r + i][c + j].isMine) {
+count++;
+}
+}
+}
+board[r][c].neighborMines = count;
+if (count > 0) {
+board[r][c].element.textContent = count;
+board[r][c].element.className = cell revealed c-${count};
+} else {
+board[r][c].element.textContent = '';
+board[r][c].element.className = cell revealed;
+}
+}
+}
+}
+}
+}
+function checkWinCondition() {
+if (revealedCount === (rows * cols) - currentMines) {
+playSound('win');
+endGame(true);
+}
+}
+function endGame(isWin) {
+gameOver = true;
+clearInterval(timerInterval);
+clearInterval(dangerInterval);
+for (let r = 0; r < rows; r++) {
+for (let c = 0; c < cols; c++) {
+if (board[r][c].isMine) {
+board[r][c].element.classList.add('mine');
+board[r][c].element.innerHTML = '💣';
+}
+}
+}
+setTimeout(() => {
+alert(isWin ? "🎉 CHIẾN THẮNG! Bạn đã vô hiệu hóa bãi mìn xuất sắc!" : "💥 BÙM! Bạn đã kích nổ mìn ngầm. Thử lại nhé!");
+}, 150);
+}
+// Tự động chạy khi load xong trang
+window.addEventListener('DOMContentLoaded', initGame);
+
+
+
+### 💡 Lưu ý nhỏ khi chơi:
+* Bạn chỉ cần mở file lên là giao diện lưới ô vuông `12x12` sẽ hiện ra ngay lập tức.
+* **Chuột trái:** Click để dò và mở ô vuông.
+* **Chuột phải:** Click để cắm cờ `🚩` đánh dấu vị trí nghi ngờ có bom.
+
+<FollowUp>
+Nếu bạn chạy lại file code mới này mà vẫn gặp trục trặc, hãy báo cho tôi biết:
+* Bạn đang mở game bằng **trình duyệt nào** (Chrome, Safari, Cốc Cốc...) hay dùng điện thoại?
+* Hiện tại lưới ô vuông đã hiện lên đầy đủ và cho bạn bấm chọn chưa?
+</FollowUp><ActionUnit query="khắc phục lỗi chặn audio context trên trình duyệt web" placement="bottom" intent="informational" />
