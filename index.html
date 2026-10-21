@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper Siêu Cấp - Tăng Kịch Tính</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e24;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #ff4757;
+            text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+        }
+
+        #game-container {
+            background: #2f3542;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        #status-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: #57606f;
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+
+        #danger-level {
+            color: #ffa502;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; text-shadow: 0 0 8px #ffa502; }
+        }
+
+        #board {
+            display: grid;
+            gap: 4px;
+            background: #747d8c;
+            padding: 4px;
+            border-radius: 5px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: #a4b0be;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            user-select: none;
+            transition: all 0.1s ease;
+            box-shadow: inset 0 3px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(0,0,0,0.2);
+        }
+
+        .cell:hover {
+            background: #ced6e0;
+        }
+
+        .cell.revealed {
+            background: #dfe4ea;
+            color: #2f3542;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .cell.mine {
+            background: #ff4757 !important;
+            animation: shake 0.15s linear infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .cell.flagged {
+            background: #eccc68;
+        }
+
+        /* Màu sắc số lượng mìn xung quanh */
+        .c-1 { color: #1e90ff; }
+        .c-2 { color: #2ed573; }
+        .c-3 { color: #ff6348; }
+        .c-4 { color: #3742fa; }
+        .c-5 { color: #8b22bb; }
+        .c-6 { color: #05c46b; }
+        .c-7 { color: #ff3f34; }
+        .c-8 { color: #000000; }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #ff6b81;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MINESWEEPER: ĐỘ KHÓ TĂNG DẦN</h1>
+    <div id="game-container">
+        <div id="status-panel">
+            <div>⏱ Thời gian: <span id="timer">0</span>s</div>
+            <div>⚡ Cấp độ nguy hiểm: <span id="danger-level">Bình thường</span></div>
+            <div>💣 Còn lại: <span id="mine-count">0</span></div>
+        </div>
+        <div id="board"></div>
+        <button onclick="initGame()">Chơi lại từ đầu</button>
+    </div>
+
+    <script>
+        // Cấu hình ban đầu
+        const ROWS = 10;
+        const COLS = 10;
+        let STARTING_MINES = 12;
+        
+        let board = [];
+        let revealedCount = 0;
+        let gameOver = false;
+        let timerInterval = null;
+        let dangerInterval = null;
+        let timeElapsed = 0;
+        let currentMines = STARTING_MINES;
+        let flagsCount = 0;
+
+        // Giả lập âm thanh kỹ thuật số bằng Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'flag') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'explode') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(10, audioCtx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.6);
+            } else if (type === 'win') {
+                // Âm thanh chiến thắng (chuỗi nốt nhạc)
+                const now = audioCtx.currentTime;
+                [440, 554, 659, 880].forEach((f, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.frequency.setValueAtTime(f, now + i*0.1);
+                    g.gain.setValueAtTime(0.2, now + i*0.1);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + i*0.1 + 0.2);
+                    o.start(now + i*0.1);
+                    o.stop(now + i*0.1 + 0.2);
+                });
+            } else if (type === 'alert') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // Khởi tạo trò chơi
+        function initGame() {
+            // Reset các thông số trạng thái
+            gameOver = false;
+            timeElapsed = 0;
+            currentMines = STARTING_MINES;
+            flagsCount = 0;
+            revealedCount = 0;
+            board = [];
+            
+            document.getElementById('timer').textContent = timeElapsed;
+            document.getElementById('danger-level').textContent = "Bình thường";
+            document.getElementById('danger-level').style.color = "#ffa502";
+            document.getElementById('mine-count').textContent = currentMines;
+
+            clearInterval(timerInterval);
+            clearInterval(dangerInterval);
+
+            // Bắt đầu đếm thời gian
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                document.getElementById('timer').textContent = timeElapsed;
+            }, 1000);
+
+            // Cơ chế TĂNG ĐỘ KHÓ: Cứ mỗi 15 giây, tăng mức độ nguy hiểm và kích hoạt mìn ẩn!
+            dangerInterval = setInterval(() => {
+                if(gameOver) return;
+                playSound('alert');
+                if (timeElapsed >= 45) {
+                    document.getElementById('danger-level').textContent = "🚨 KHẨN CẤP!!";
+                    document.getElementById('danger-level').style.color = "#ff4757";
+                    spawnRandomMine(); // Thêm mìn ngẫu nhiên vào ô chưa mở
+                } else if (timeElapsed >= 25) {
+                    document.getElementById('danger-level').textContent = "⚠️ Nguy hiểm";
+                    document.getElementById('danger-level').style.color = "#ff7f50";
+                    spawnRandomMine();
+                } else if (timeElapsed >= 12) {
+                    document.getElementById('danger-level').textContent = "⚡ Cảnh báo";
+                    document.getElementById('danger-level').style.color = "#eccc68";
+                }
+            }, 12000);
+
+            createBoard();
+        }
+
+        // Tạo lưới và chèn mìn
+        function createBoard() {
