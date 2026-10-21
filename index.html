@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minesweeper Siêu Cấp - Đã Sửa Lỗi</title>
+    <title>Minesweeper Siêu Cấp - Bản Sửa Lỗi Triệt Để</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -16,29 +16,37 @@
             min-height: 100vh;
             margin: 0;
             user-select: none;
+            -webkit-user-select: none;
         }
 
         h1 {
-            margin-bottom: 5px;
+            margin: 10px 0 5px 0;
             color: #ff4757;
             text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+            font-size: 1.8rem;
         }
 
         #game-container {
             background: #2f3542;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             text-align: center;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
         }
 
         .control-panel {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
         }
 
         select, button {
-            padding: 8px 15px;
-            font-size: 1rem;
+            padding: 8px 12px;
+            font-size: 0.9rem;
             font-weight: bold;
             border: none;
             border-radius: 5px;
@@ -50,33 +58,40 @@
 
         select {
             background: #57606f;
-            margin-right: 10px;
         }
 
-        button:hover, select:hover {
-            background: #ff6b81;
+        .mode-panel {
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-mode {
+            background: #747d8c;
+            flex: 1;
+            padding: 10px;
+            font-size: 1rem;
+        }
+
+        .btn-mode.active {
+            background: #2ed573;
+            box-shadow: 0 0 10px rgba(46, 213, 115, 0.6);
         }
 
         #status-panel {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
             font-weight: bold;
             background: #57606f;
-            padding: 10px 20px;
+            padding: 8px 15px;
             border-radius: 5px;
-            gap: 15px;
         }
 
         #danger-level {
             color: #ffa502;
-            animation: pulse 1s infinite alternate;
-        }
-
-        @keyframes pulse {
-            from { opacity: 0.6; }
-            to { opacity: 1; text-shadow: 0 0 8px #ffa502; }
         }
 
         #board {
@@ -86,9 +101,7 @@
             padding: 6px;
             border-radius: 8px;
             margin: 0 auto;
-            max-width: 90vw;
-            max-height: 70vh;
-            overflow: auto;
+            justify-content: center;
         }
 
         .cell {
@@ -102,12 +115,7 @@
             justify-content: center;
             font-weight: bold;
             font-size: 1.1rem;
-            transition: all 0.1s ease;
             box-shadow: inset 0 3px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(0,0,0,0.2);
-        }
-
-        .cell:hover {
-            background: #ced6e0;
         }
 
         .cell.revealed {
@@ -119,13 +127,6 @@
 
         .cell.mine {
             background: #ff4757 !important;
-            animation: shake 0.15s linear infinite;
-        }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px); }
-            50% { transform: translate(-1px, -1px); }
-            100% { transform: translate(1px, -1px); }
         }
 
         .cell.flagged {
@@ -144,31 +145,36 @@
 </head>
 <body>
 
-    <h1>💣 MINESWEEPER KHẨN CẤP 💣</h1>
+    <h1>💣 DÒ MÌN KHẨN CẤP 💣</h1>
     
     <div id="game-container">
         <div class="control-panel">
             <select id="difficulty-select" onchange="changeDifficulty()">
-                <option value="easy">Dễ (8x8 - 10 mìn)</option>
-                <option value="medium" selected>Vừa (12x12 - 20 mìn)</option>
-                <option value="hard">Khó (16x16 - 40 mìn)</option>
+                <option value="easy">Dễ (8x8)</option>
+                <option value="medium" selected>Vừa (10x10)</option>
             </select>
             <button onclick="initGame()">Chơi lại</button>
         </div>
 
+        <!-- BẢN NÂNG CẤP CHỌN CHẾ ĐỘ CLICK ĐỂ TRÁNH LỖI ĐƠ CHUỘT -->
+        <div class="mode-panel">
+            <button id="mode-dig" class="btn-mode active" onclick="setPlayMode('dig')">⛏️ Mở Ô</button>
+            <button id="mode-flag" class="btn-mode" onclick="setPlayMode('flag')">🚩 Cắm Cờ</button>
+        </div>
+
         <div id="status-panel">
-            <div>⏱ Thời gian: <span id="timer">0</span>s</div>
-            <div>⚡ Trạng thái: <span id="danger-level">Bình thường</span></div>
-            <div>💣 Mìn ẩn: <span id="mine-count">0</span></div>
+            <div>⏱ <span id="timer">0</span>s</div>
+            <div>⚡ <span id="danger-level">Bình thường</span></div>
+            <div>💣 <span id="mine-count">0</span></div>
         </div>
         
         <div id="board"></div>
     </div>
 
     <script>
-        let rows = 12;
-        let cols = 12;
-        let baseMines = 20;
+        let rows = 10;
+        let cols = 10;
+        let baseMines = 12;
         
         let board = [];
         let revealedCount = 0;
@@ -178,8 +184,8 @@
         let timeElapsed = 0;
         let currentMines = baseMines;
         let flagsCount = 0;
+        let playMode = 'dig'; // 'dig' hoặc 'flag'
 
-        // Khởi tạo AudioContext ở trạng thái chờ rỗng (Sẽ kích hoạt sau khi người dùng click ô)
         let audioCtx = null;
         
         function initAudio() {
@@ -192,7 +198,6 @@
         }
         
         function playSound(type) {
-            // Tự động kích hoạt lại âm thanh nếu bị trình duyệt chặn ban đầu
             initAudio();
             if (!audioCtx) return;
 
@@ -200,64 +205,49 @@
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             const now = audioCtx.currentTime;
 
             if (type === 'click') {
                 osc.type = 'sine';
                 osc.frequency.setValueAtTime(400, now);
-                osc.frequency.exponentialRampToValueAtTime(10, now + 0.08);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-                osc.start(now);
-                osc.stop(now + 0.08);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now); osc.stop(now + 0.05);
             } else if (type === 'flag') {
                 osc.type = 'triangle';
                 osc.frequency.setValueAtTime(550, now);
-                osc.frequency.exponentialRampToValueAtTime(250, now + 0.12);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-                osc.start(now);
-                osc.stop(now + 0.12);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now); osc.stop(now + 0.08);
             } else if (type === 'explode') {
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(100, now);
-                osc.frequency.linearRampToValueAtTime(10, now + 0.5);
-                gain.gain.setValueAtTime(0.6, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                osc.start(now);
-                osc.stop(now + 0.5);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
             } else if (type === 'alert') {
                 osc.type = 'square';
-                osc.frequency.setValueAtTime(700, now);
-                osc.frequency.setValueAtTime(500, now + 0.1);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now);
-                osc.stop(now + 0.2);
-            } else if (type === 'win') {
-                const notes = [261.63, 329.63, 392.00, 523.25];
-                notes.forEach((freq, index) => {
-                    const o = audioCtx.createOscillator();
-                    const g = audioCtx.createGain();
-                    o.connect(g); g.connect(audioCtx.destination);
-                    o.frequency.setValueAtTime(freq, now + index * 0.1);
-                    g.gain.setValueAtTime(0.15, now + index * 0.1);
-                    g.gain.exponentialRampToValueAtTime(0.01, now + index * 0.1 + 0.2);
-                    o.start(now + index * 0.1);
-                    o.stop(now + index * 0.1 + 0.2);
-                });
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
             }
+        }
+
+        // Chuyển đổi chế độ thao tác: Mở ô / Cắm cờ
+        function setPlayMode(mode) {
+            playMode = mode;
+            document.getElementById('mode-dig').classList.toggle('active', mode === 'dig');
+            document.getElementById('mode-flag').classList.toggle('active', mode === 'flag');
+            initAudio();
         }
 
         function changeDifficulty() {
             const level = document.getElementById('difficulty-select').value;
             if (level === 'easy') {
-                rows = 8; cols = 8; baseMines = 10;
+                rows = 8; cols = 8; baseMines = 8;
             } else if (level === 'medium') {
-                rows = 12; cols = 12; baseMines = 20;
-            } else if (level === 'hard') {
-                rows = 16; cols = 16; baseMines = 40;
+                rows = 10; cols = 10; baseMines = 12;
             }
             initGame();
         }
@@ -269,59 +259,58 @@
             flagsCount = 0;
             revealedCount = 0;
             board = [];
+            setPlayMode('dig');
             
             document.getElementById('timer').textContent = timeElapsed;
-            document.getElementById('danger-level').textContent = "Bình thường";
-            document.getElementById('danger-level').style.color = "#ffa502";
+            document.getElementById('danger-level').textContent = "An toàn";
+            document.getElementById('danger-level').style.color = "#2ed573";
             document.getElementById('mine-count').textContent = currentMines;
 
             clearInterval(timerInterval);
             clearInterval(dangerInterval);
 
             timerInterval = setInterval(() => {
+                if(gameOver) return;
                 timeElapsed++;
                 document.getElementById('timer').textContent = timeElapsed;
             }, 1000);
 
+            // Tăng độ khó: Mỗi 10 giây thả thêm 1 quả mìn ẩn kịch tính
             dangerInterval = setInterval(() => {
                 if(gameOver) return;
                 playSound('alert');
-
-                if (timeElapsed >= 30) {
-                    document.getElementById('danger-level').textContent = "🚨 BÁO ĐỘNG ĐỎ";
+                if (timeElapsed >= 20) {
+                    document.getElementById('danger-level').textContent = "🚨 NGUY HIỂM";
                     document.getElementById('danger-level').style.color = "#ff4757";
                     spawnRandomMine();
-                } else if (timeElapsed >= 15) {
-                    document.getElementById('danger-level').textContent = "⚠️ Nguy hiểm";
-                    document.getElementById('danger-level').style.color = "#ff7f50";
+                } else if (timeElapsed >= 10) {
+                    document.getElementById('danger-level').textContent = "⚠️ Cảnh báo";
+                    document.getElementById('danger-level').style.color = "#ffa502";
                     spawnRandomMine();
-                } else if (timeElapsed >= 7) {
-document.getElementById('danger-level').textContent = "⚡ Gia tăng";
-document.getElementById('danger-level').style.color = "#eccc68";
-}
-}, 10000);
-createBoard();
-}
-function createBoard() {
-const boardElement = document.getElementById('board');
-boardElement.innerHTML = '';
-boardElement.style.gridTemplateRows = repeat(${rows}, 35px);
-boardElement.style.gridTemplateColumns = repeat(${cols}, 35px);
-for (let r = 0; r < rows; r++) {
-board[r] = [];
-for (let c = 0; c < cols; c++) {
-board[r][c] = {
-row: r, col: c,
-isMine: false, isRevealed: false, isFlagged: false,
-neighborMines: 0, element: null
+                }
+            }, 10000);
+
+            createBoard();
+        }
+
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            boardElement.style.gridTemplateRows = `repeat(${rows}, 35px)`;
+            boardElement.style.gridTemplateColumns = `repeat(${cols}, 35px)`;
+
+            for (let r = 0; r < rows; r++) {
+                board[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    board[r][c] = {
+                        row: r, col: c,
+                        isMine: false, isRevealed: false, isFlagged: false,
+                        neighborMines: 0, element: null
 };
 const cellEl = document.createElement('div');
 cellEl.classList.add('cell');
-cellEl.addEventListener('click', () => handleCellClick(r, c));
-cellEl.addEventListener('contextmenu', (e) => {
-e.preventDefault();
-handleCellRightClick(r, c);
-});
+// Click chuột trái thông thường xử lý cho cả điện thoại và máy tính
+cellEl.addEventListener('click', () => handleCellAction(r, c));
 boardElement.appendChild(cellEl);
 board[r][c].element = cellEl;
 }
@@ -353,10 +342,34 @@ board[r][c].neighborMines = count;
 }
 }
 }
-function handleCellClick(r, c) {
-// Đảm bảo khởi tạo âm thanh khi người dùng nhấn chuột chơi game
+// Xử lý hành động tùy thuộc vào chế độ đang chọn (Mở ô hoặc Cắm cờ)
+function handleCellAction(r, c) {
 initAudio();
-if (gameOver || board[r][c].isRevealed || board[r][c].isFlagged) return;
+if (gameOver || board[r][c].isRevealed) return;
+if (playMode === 'flag') {
+// Hành động CẮM CỜ
+const cell = board[r][c];
+playSound('flag');
+if (!cell.isFlagged) {
+cell.isFlagged = true;
+cell.element.classList.add('flagged');
+cell.element.innerHTML = '🚩';
+flagsCount++;
+} else {
+cell.isFlagged = false;
+cell.element.classList.remove('flagged');
+cell.element.innerHTML = '';
+flagsCount--;
+}
+document.getElementById('mine-count').textContent = currentMines - flagsCount;
+} else {
+// Hành động MỞ Ô
+if (board[r][c].isFlagged) return;
+revealCell(r, c);
+}
+}
+function revealCell(r, c) {
+if (board[r][c].isRevealed || board[r][c].isFlagged) return;
 const cell = board[r][c];
 cell.isRevealed = true;
 revealedCount++;
@@ -376,30 +389,12 @@ cell.element.classList.add(c-${cell.neighborMines});
 for (let i = -1; i <= 1; i++) {
 for (let j = -1; j <= 1; j++) {
 if (board[r + i] && board[r + i][c + j]) {
-handleCellClick(r + i, c + j);
+revealCell(r + i, c + j);
 }
 }
 }
 }
 checkWinCondition();
-}
-function handleCellRightClick(r, c) {
-initAudio();
-if (gameOver || board[r][c].isRevealed) return;
-const cell = board[r][c];
-playSound('flag');
-if (!cell.isFlagged) {
-cell.isFlagged = true;
-cell.element.classList.add('flagged');
-cell.element.innerHTML = '🚩';
-flagsCount++;
-} else {
-cell.isFlagged = false;
-cell.element.classList.remove('flagged');
-cell.element.innerHTML = '';
-flagsCount--;
-}
-document.getElementById('mine-count').textContent = currentMines - flagsCount;
 }
 function spawnRandomMine() {
 let emptyCells = [];
@@ -442,7 +437,6 @@ board[r][c].element.className = cell revealed;
 }
 function checkWinCondition() {
 if (revealedCount === (rows * cols) - currentMines) {
-playSound('win');
 endGame(true);
 }
 }
@@ -459,21 +453,18 @@ board[r][c].element.innerHTML = '💣';
 }
 }
 setTimeout(() => {
-alert(isWin ? "🎉 CHIẾN THẮNG! Bạn đã vô hiệu hóa bãi mìn xuất sắc!" : "💥 BÙM! Bạn đã kích nổ mìn ngầm. Thử lại nhé!");
-}, 150);
+alert(isWin ? "🎉 CHIẾN THẮNG!" : "💥 BÙM! Game Over!");
+}, 100);
 }
-// Tự động chạy khi load xong trang
-window.addEventListener('DOMContentLoaded', initGame);
+window.onload = initGame;
 
 
 
-### 💡 Lưu ý nhỏ khi chơi:
-* Bạn chỉ cần mở file lên là giao diện lưới ô vuông `12x12` sẽ hiện ra ngay lập tức.
-* **Chuột trái:** Click để dò và mở ô vuông.
-* **Chuột phải:** Click để cắm cờ `🚩` đánh dấu vị trí nghi ngờ có bom.
+### 💡 Hướng dẫn chơi bản mới này để không bị lỗi:
+1. Bạn nhấn nút **⛏️ Mở Ô** (đang sáng màu xanh), sau đó chạm/click vào các ô trên bảng để mở ô dò tìm bom.
+2. Khi muốn đánh dấu ô có bom, bạn hãy nhấn nút **🚩 Cắm Cờ** phía trên, rồi click vào ô muốn khóa lại. Khi cắm cờ xong, nhớ nhấn lại nút **⛏️ Mở Ô** để tiếp tục chơi nhé!
 
 <FollowUp>
-Nếu bạn chạy lại file code mới này mà vẫn gặp trục trặc, hãy báo cho tôi biết:
-* Bạn đang mở game bằng **trình duyệt nào** (Chrome, Safari, Cốc Cốc...) hay dùng điện thoại?
-* Hiện tại lưới ô vuông đã hiện lên đầy đủ và cho bạn bấm chọn chưa?
-</FollowUp><ActionUnit query="khắc phục lỗi chặn audio context trên trình duyệt web" placement="bottom" intent="informational" />
+Sau khi thử bản cập nhật dùng nút chọn chế độ này, bạn phản hồi lại giúp tôi xem:
+* Trò chơi đã **nhận tương tác click và chơi được bình thường** chưa?
+</FollowUp><ActionUnit query="cách chạy file html javascript local không bị chặn" placement="bottom" intent="informational" />
