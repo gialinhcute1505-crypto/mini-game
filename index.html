@@ -15,10 +15,11 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            user-select: none;
         }
 
         h1 {
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             color: #ff4757;
             text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
         }
@@ -31,15 +32,41 @@
             text-align: center;
         }
 
+        .control-panel {
+            margin-bottom: 15px;
+        }
+
+        select, button {
+            padding: 8px 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            background: #ff4757;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select {
+            background: #57606f;
+            margin-right: 10px;
+        }
+
+        button:hover, select:hover {
+            background: #ff6b81;
+        }
+
         #status-panel {
             display: flex;
             justify-content: space-between;
             margin-bottom: 15px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: bold;
             background: #57606f;
             padding: 10px 20px;
             border-radius: 5px;
+            gap: 15px;
         }
 
         #danger-level {
@@ -56,23 +83,25 @@
             display: grid;
             gap: 4px;
             background: #747d8c;
-            padding: 4px;
-            border-radius: 5px;
+            padding: 6px;
+            border-radius: 8px;
             margin: 0 auto;
+            max-width: 90vw;
+            max-height: 70vh;
+            overflow: auto;
         }
 
         .cell {
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
             background: #a4b0be;
-            border-radius: 3px;
+            border-radius: 4px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 1.2rem;
-            user-select: none;
+            font-size: 1.1rem;
             transition: all 0.1s ease;
             box-shadow: inset 0 3px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(0,0,0,0.2);
         }
@@ -94,17 +123,9 @@
         }
 
         @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(0px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(2px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(2px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
+            0% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, -1px); }
         }
 
         .cell.flagged {
@@ -120,43 +141,36 @@
         .c-6 { color: #05c46b; }
         .c-7 { color: #ff3f34; }
         .c-8 { color: #000000; }
-
-        button {
-            margin-top: 15px;
-            padding: 10px 20px;
-            font-size: 1rem;
-            background: #ff4757;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background: #ff6b81;
-        }
     </style>
 </head>
 <body>
 
-    <h1>MINESWEEPER: ĐỘ KHÓ TĂNG DẦN</h1>
+    <h1>💣 MINESWEEPER KHẨN CẤP 💣</h1>
+    
     <div id="game-container">
+        <div class="control-panel">
+            <select id="difficulty-select" onchange="changeDifficulty()">
+                <option value="easy">Dễ (8x8 - 10 mìn)</option>
+                <option value="medium" selected>Vừa (12x12 - 20 mìn)</option>
+                <option value="hard">Khó (16x16 - 40 mìn)</option>
+            </select>
+            <button onclick="initGame()">Chơi lại</button>
+        </div>
+
         <div id="status-panel">
             <div>⏱ Thời gian: <span id="timer">0</span>s</div>
-            <div>⚡ Cấp độ nguy hiểm: <span id="danger-level">Bình thường</span></div>
-            <div>💣 Còn lại: <span id="mine-count">0</span></div>
+            <div>⚡ Trạng thái: <span id="danger-level">Bình thường</span></div>
+            <div>💣 Mìn ẩn: <span id="mine-count">0</span></div>
         </div>
+        
         <div id="board"></div>
-        <button onclick="initGame()">Chơi lại từ đầu</button>
     </div>
 
     <script>
-        // Cấu hình ban đầu
-        const ROWS = 10;
-        const COLS = 10;
-        let STARTING_MINES = 12;
+        // Cấu hình chế độ chơi mặc định
+        let rows = 12;
+        let cols = 12;
+        let baseMines = 20;
         
         let board = [];
         let revealedCount = 0;
@@ -164,72 +178,90 @@
         let timerInterval = null;
         let dangerInterval = null;
         let timeElapsed = 0;
-        let currentMines = STARTING_MINES;
+        let currentMines = baseMines;
         let flagsCount = 0;
 
-        // Giả lập âm thanh kỹ thuật số bằng Web Audio API
+        // Khởi tạo Web Audio API giả lập âm thanh kỹ thuật số
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
 
+            const now = audioCtx.currentTime;
+
             if (type === 'click') {
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.1);
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.08);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
             } else if (type === 'flag') {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.15);
+                osc.frequency.setValueAtTime(550, now);
+                osc.frequency.exponentialRampToValueAtTime(250, now + 0.12);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
             } else if (type === 'explode') {
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-                osc.frequency.linearRampToValueAtTime(10, audioCtx.currentTime + 0.6);
-                gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.6);
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(10, now + 0.5);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } else if (type === 'alert') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(700, now);
+                osc.frequency.setValueAtTime(500, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
             } else if (type === 'win') {
-                // Âm thanh chiến thắng (chuỗi nốt nhạc)
-                const now = audioCtx.currentTime;
-                [440, 554, 659, 880].forEach((f, i) => {
+                // Sửa chuỗi nốt nhạc chiến thắng vui tươi
+                const notes = [261.63, 329.63, 392.00, 523.25]; // Đồ - Mi - Sol - Đố
+                notes.forEach((freq, index) => {
                     const o = audioCtx.createOscillator();
                     const g = audioCtx.createGain();
                     o.connect(g); g.connect(audioCtx.destination);
-                    o.frequency.setValueAtTime(f, now + i*0.1);
-                    g.gain.setValueAtTime(0.2, now + i*0.1);
-                    g.gain.exponentialRampToValueAtTime(0.01, now + i*0.1 + 0.2);
-                    o.start(now + i*0.1);
-                    o.stop(now + i*0.1 + 0.2);
+                    o.frequency.setValueAtTime(freq, now + index * 0.1);
+                    g.gain.setValueAtTime(0.15, now + index * 0.1);
+                    g.gain.exponentialRampToValueAtTime(0.01, now + index * 0.1 + 0.2);
+                    o.start(now + index * 0.1);
+                    o.stop(now + index * 0.1 + 0.2);
                 });
-            } else if (type === 'alert') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.2);
             }
         }
 
-        // Khởi tạo trò chơi
+        // Thay đổi cấp độ chơi
+        function changeDifficulty() {
+            const level = document.getElementById('difficulty-select').value;
+            if (level === 'easy') {
+                rows = 8; cols = 8; baseMines = 10;
+            } else if (level === 'medium') {
+                rows = 12; cols = 12; baseMines = 20;
+            } else if (level === 'hard') {
+                rows = 16; cols = 16; baseMines = 40;
+            }
+            initGame();
+        }
+
+        // Khởi tạo lại toàn bộ trạng thái
         function initGame() {
-            // Reset các thông số trạng thái
             gameOver = false;
             timeElapsed = 0;
-            currentMines = STARTING_MINES;
+            currentMines = baseMines;
             flagsCount = 0;
             revealedCount = 0;
             board = [];
@@ -248,26 +280,15 @@
                 document.getElementById('timer').textContent = timeElapsed;
             }, 1000);
 
-            // Cơ chế TĂNG ĐỘ KHÓ: Cứ mỗi 15 giây, tăng mức độ nguy hiểm và kích hoạt mìn ẩn!
+            // Cơ chế TĂNG ĐỘ KHÓ: Cứ mỗi 10 giây tăng độ nguy hiểm và rải thêm mìn!
             dangerInterval = setInterval(() => {
                 if(gameOver) return;
                 playSound('alert');
-                if (timeElapsed >= 45) {
-                    document.getElementById('danger-level').textContent = "🚨 KHẨN CẤP!!";
+
+                if (timeElapsed >= 30) {
+                    document.getElementById('danger-level').textContent = "🚨 BÁO ĐỘNG ĐỎ";
                     document.getElementById('danger-level').style.color = "#ff4757";
-                    spawnRandomMine(); // Thêm mìn ngẫu nhiên vào ô chưa mở
-                } else if (timeElapsed >= 25) {
+                    spawnRandomMine(); // Thả thêm mìn vào ô chưa mở
+                } else if (timeElapsed >= 15) {
                     document.getElementById('danger-level').textContent = "⚠️ Nguy hiểm";
                     document.getElementById('danger-level').style.color = "#ff7f50";
-                    spawnRandomMine();
-                } else if (timeElapsed >= 12) {
-                    document.getElementById('danger-level').textContent = "⚡ Cảnh báo";
-                    document.getElementById('danger-level').style.color = "#eccc68";
-                }
-            }, 12000);
-
-            createBoard();
-        }
-
-        // Tạo lưới và chèn mìn
-        function createBoard() {
